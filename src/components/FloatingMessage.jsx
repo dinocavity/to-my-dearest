@@ -18,34 +18,28 @@ const FloatingMessage = () => {
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(false);
   const [unread, setUnread] = useState(false);
-  const dragRef = useRef(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  const tapStartRef = useRef(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setUnread(true);
-    }, 20000);
+    const interval = setInterval(() => setUnread(true), 20000);
     return () => clearInterval(interval);
   }, []);
 
-  const handleClick = () => {
-    if (!dragRef.current) {
+  const handleStart = () => {
+    tapStartRef.current = Date.now();
+  };
+
+  const handleStop = (_, data) => {
+    const tapDuration = Date.now() - tapStartRef.current;
+    setPosition({ x: data.x, y: data.y });
+
+    // If drag was under 200ms, treat it as a tap
+    if (tapDuration < 200) {
       setVisible((prev) => !prev);
       setUnread(false);
     }
-  };
-
-  const handleStart = () => {
-    dragRef.current = false;
-  };
-
-  const handleDrag = () => {
-    dragRef.current = true;
-  };
-
-  const handleStop = () => {
-    setTimeout(() => {
-      dragRef.current = false; // reset after drag ends
-    }, 100);
   };
 
   const nextMessage = () => {
@@ -53,32 +47,37 @@ const FloatingMessage = () => {
   };
 
   return (
-    <Draggable onStart={handleStart} onDrag={handleDrag} onStop={handleStop}>
-      <div className="fixed bottom-20 right-6 z-50 cursor-move">
-        {/* Chat Icon */}
-        <button
-          onClick={handleClick}
-          className="relative bg-purple-200 hover:bg-purple-300 text-purple-800 p-3 rounded-full shadow-lg transition"
-          aria-label="Toggle message"
-        >
-          <FaCommentDots size={20} />
-          {unread && (
-            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
-          )}
-        </button>
-
-        {/* Message Panel */}
-        {visible && (
-          <div
-            className="mt-3 max-w-xs bg-white text-purple-800 shadow-lg rounded-2xl p-4 text-sm sm:text-base border border-purple-200"
-            onClick={nextMessage}
+    <div className="fixed z-50" style={{ left: position.x, top: position.y || 'auto', bottom: position.y === 0 ? '1.25rem' : 'auto', right: position.x === 0 ? '1.5rem' : 'auto' }}>
+      {/* Draggable Icon */}
+      <Draggable
+        position={position}
+        onStart={handleStart}
+        onStop={handleStop}
+      >
+        <div className="cursor-move">
+          <button
+            className="relative bg-purple-200 hover:bg-purple-300 text-purple-800 p-3 rounded-full shadow-lg transition"
+            aria-label="Toggle message"
           >
-            {messages[index]}
-            <p className="mt-2 text-xs italic text-purple-400">Click to see next</p>
-          </div>
-        )}
-      </div>
-    </Draggable>
+            <FaCommentDots size={20} />
+            {unread && (
+              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+            )}
+          </button>
+        </div>
+      </Draggable>
+
+      {/* Message Panel */}
+      {visible && (
+        <div
+          className="absolute bottom-14 right-0 max-w-xs bg-white text-purple-800 shadow-lg rounded-2xl p-4 text-sm sm:text-base border border-purple-200"
+          onClick={nextMessage}
+        >
+          {messages[index]}
+          <p className="mt-2 text-xs italic text-purple-400">Tap to see next</p>
+        </div>
+      )}
+    </div>
   );
 };
 
